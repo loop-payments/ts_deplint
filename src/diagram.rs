@@ -47,14 +47,14 @@ fn get_allows(yaml_path: &Path) -> Result<AllowsMap<String>, Box<dyn Error>> {
     Ok(converted_rules)
 }
 
-fn get_transitive_allows<T>(direct_allows: &AllowsMap<T>) -> AllowsMap<T>
+fn get_transitive_allows<T>(direct_allows: &AllowsMap<T>) -> AllowsMap<&T>
 where
-    T: Eq + Hash + Ord + Clone,
+    T: Eq + Hash + Ord,
 {
     let mut transitive_allows = AllowsMap::new();
     for (source, targets) in direct_allows.iter() {
         if !transitive_allows.contains_key(source) {
-            transitive_allows.insert(source.clone(), BTreeSet::new());
+            transitive_allows.insert(source, BTreeSet::new());
         }
         let mut to_visit = BTreeSet::from_iter(targets.iter());
         let mut seen = BTreeSet::new();
@@ -64,7 +64,7 @@ where
             }
             seen.insert(current);
             if let Some(reachable_from_source) = transitive_allows.get_mut(source) {
-                reachable_from_source.insert(current.clone());
+                reachable_from_source.insert(current);
                 if let Some(allows) = direct_allows.get(current) {
                     to_visit.extend(allows);
                 }
@@ -82,8 +82,8 @@ fn test_get_transitive_allows() {
             ("b", BTreeSet::from(["c"]))
         ])),
         AllowsMap::from([
-            ("a", BTreeSet::from(["b", "c"])),
-            ("b", BTreeSet::from(["c"])),
+            (&"a", BTreeSet::from([&"b", &"c"])),
+            (&"b", BTreeSet::from([&"c"])),
         ])
     );
     assert_eq!(
@@ -93,9 +93,9 @@ fn test_get_transitive_allows() {
             ("c", BTreeSet::from(["a"]))
         ])),
         AllowsMap::from([
-            ("a", BTreeSet::from(["a", "b", "c"])),
-            ("b", BTreeSet::from(["a", "b", "c"])),
-            ("c", BTreeSet::from(["a", "b", "c"])),
+            (&"a", BTreeSet::from([&"a", &"b", &"c"])),
+            (&"b", BTreeSet::from([&"a", &"b", &"c"])),
+            (&"c", BTreeSet::from([&"a", &"b", &"c"])),
         ])
     );
 }
