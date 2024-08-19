@@ -1,13 +1,18 @@
 extern crate serde_yaml;
 
-use std::collections::{BTreeMap, BTreeSet};
-use std::error::Error;
-use std::fs;
-use std::io::{self, Write};
-use std::path::Path;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    error::Error,
+    fs,
+    hash::Hash,
+    io::{self, Write},
+    path::Path,
+};
 
 use crate::rules::read_rules_file;
 use crate::RULES_FILE_NAME;
+
+type AllowsMap<T> = BTreeMap<T, BTreeSet<T>>;
 
 /// Recursively find directories containing a rules file and update the diagram.
 pub fn update_diagrams_recursively(
@@ -32,14 +37,67 @@ pub fn update_diagrams_recursively(
     Ok(())
 }
 
-fn get_allows(yaml_path: &Path) -> Result<BTreeMap<String, BTreeSet<String>>, Box<dyn Error>> {
+fn get_allows(yaml_path: &Path) -> Result<AllowsMap<String>, Box<dyn Error>> {
     let yaml_rules = read_rules_file(yaml_path)?;
     let converted_rules = yaml_rules
         .allow
         .into_iter()
         .map(|(source, targets)| (source, BTreeSet::from_iter(targets.into_iter())))
-        .collect::<BTreeMap<String, BTreeSet<String>>>();
+        .collect::<AllowsMap<_>>();
     Ok(converted_rules)
+}
+
+fn get_transitive_allows<T>(direct_allows: &AllowsMap<T>) -> AllowsMap<&T>
+where
+    T: Eq + Hash + Ord,
+{
+    let mut transitive_allows = AllowsMap::new();
+    for (source, targets) in direct_allows.iter() {
+        if !transitive_allows.contains_key(source) {
+            transitive_allows.insert(source, BTreeSet::new());
+        }
+        let mut to_visit = BTreeSet::from_iter(targets.iter());
+        let mut seen = BTreeSet::new();
+        while let Some(current) = to_visit.pop_first() {
+            if seen.contains(current) {
+                continue;
+            }
+            seen.insert(current);
+            if let Some(reachable_from_source) = transitive_allows.get_mut(source) {
+                reachable_from_source.insert(current);
+                if let Some(allows) = direct_allows.get(current) {
+                    to_visit.extend(allows);
+                }
+            }
+        }
+    }
+    transitive_allows
+}
+
+#[test]
+fn test_get_transitive_allows() {
+    assert_eq!(
+        get_transitive_allows(&AllowsMap::from([
+            ("a", BTreeSet::from(["b"])),
+            ("b", BTreeSet::from(["c"]))
+        ])),
+        AllowsMap::from([
+            (&"a", BTreeSet::from([&"b", &"c"])),
+            (&"b", BTreeSet::from([&"c"])),
+        ])
+    );
+    assert_eq!(
+        get_transitive_allows(&AllowsMap::from([
+            ("a", BTreeSet::from(["b"])),
+            ("b", BTreeSet::from(["c"])),
+            ("c", BTreeSet::from(["a"]))
+        ])),
+        AllowsMap::from([
+            (&"a", BTreeSet::from([&"a", &"b", &"c"])),
+            (&"b", BTreeSet::from([&"a", &"b", &"c"])),
+            (&"c", BTreeSet::from([&"a", &"b", &"c"])),
+        ])
+    );
 }
 
 fn get_other_readme_lines(readme_path: &Path) -> io::Result<(Vec<String>, Vec<String>)> {
@@ -77,11 +135,10 @@ pub fn update_readme_with_diagram(
     show_circular_dependencies: bool,
 ) -> Result<(), Box<dyn Error>> {
     let allows = get_allows(yaml_path)?;
-
     if allows.is_empty() {
         return Ok(());
     }
-
+    let transitive_allows: AllowsMap<_> = get_transitive_allows(&allows);
     let (before_dep_diagram_block, after_dep_diagram_block) = get_other_readme_lines(readme_path)?;
 
     let mut circular_edge_indices = vec![];
@@ -91,7 +148,7 @@ pub fn update_readme_with_diagram(
             if target == "-" {
                 continue;
             }
-            let is_circular_dependency = allows
+            let is_circular_dependency = transitive_allows
                 .get(target)
                 .map(|deps| deps.contains(source))
                 .unwrap_or(false);
