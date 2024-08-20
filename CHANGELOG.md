@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.0.12
+
+- Add support for highlighting transitive dependencies in red.
+
 ## v0.0.11
 
 - Lint and fix references to nonexistent directories.
