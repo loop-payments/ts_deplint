@@ -7,109 +7,109 @@ on:
   workflow_dispatch:
 
 jobs:
-  publish-npm-binaries:
-    name: Publish NPM packages
-    runs-on: ${{ matrix.build.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        build:
-          - {
-              NAME: linux-x64-glibc,
-              OS: ubuntu-20.04,
-              TOOLCHAIN: stable,
-              TARGET: x86_64-unknown-linux-gnu,
-            }
-          - {
-              NAME: linux-arm64-glibc,
-              OS: ubuntu-20.04,
-              TOOLCHAIN: stable,
-              TARGET: aarch64-unknown-linux-gnu,
-            }
-          - {
-              NAME: darwin-x64,
-              OS: macos-12,
-              TOOLCHAIN: stable,
-              TARGET: x86_64-apple-darwin,
-            }
-          - {
-              NAME: darwin-arm64,
-              OS: macos-12,
-              TOOLCHAIN: stable,
-              TARGET: aarch64-apple-darwin,
-            }
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  # publish-npm-binaries:
+  #   name: Publish NPM packages
+  #   runs-on: ${{ matrix.build.os }}
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       build:
+  #         - {
+  #             NAME: linux-x64-glibc,
+  #             OS: ubuntu-20.04,
+  #             TOOLCHAIN: stable,
+  #             TARGET: x86_64-unknown-linux-gnu,
+  #           }
+  #         - {
+  #             NAME: linux-arm64-glibc,
+  #             OS: ubuntu-20.04,
+  #             TOOLCHAIN: stable,
+  #             TARGET: aarch64-unknown-linux-gnu,
+  #           }
+  #         - {
+  #             NAME: darwin-x64,
+  #             OS: macos-12,
+  #             TOOLCHAIN: stable,
+  #             TARGET: x86_64-apple-darwin,
+  #           }
+  #         - {
+  #             NAME: darwin-arm64,
+  #             OS: macos-12,
+  #             TOOLCHAIN: stable,
+  #             TARGET: aarch64-apple-darwin,
+  #           }
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
 
-      - name: Determine new package version
-        id: version
-        run: |
-          git checkout HEAD -- Cargo.toml
-          curr="$(grep -oE 'version\s*=\s*"[^"]+"' Cargo.toml | cut -d '"' -f 2 | head -n 1)"
-          echo "new-version=$curr" >> "$GITHUB_OUTPUT"
+  #     - name: Determine new package version
+  #       id: version
+  #       run: |
+  #         git checkout HEAD -- Cargo.toml
+  #         curr="$(grep -oE 'version\s*=\s*"[^"]+"' Cargo.toml | cut -d '"' -f 2 | head -n 1)"
+  #         echo "new-version=$curr" >> "$GITHUB_OUTPUT"
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.build.TOOLCHAIN }}
-          target: ${{ matrix.build.TARGET }}
-          override: true
+  #     - name: Install Rust toolchain
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         toolchain: ${{ matrix.build.TOOLCHAIN }}
+  #         target: ${{ matrix.build.TARGET }}
+  #         override: true
 
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --locked --target ${{ matrix.build.TARGET }}
-          use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
+  #     - name: Build
+  #       uses: actions-rs/cargo@v1
+  #       with:
+  #         command: build
+  #         args: --release --locked --target ${{ matrix.build.TARGET }}
+  #         use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
 
-      - name: Install node
-        uses: actions/setup-node@v3
-        with:
-          node-version: "16"
-          registry-url: "https://registry.npmjs.org"
+  #     - name: Install node
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: "16"
+  #         registry-url: "https://registry.npmjs.org"
 
-      - name: Publish to NPM
-        shell: bash
-        run: |
-          cd npm
-          scope="@ts_deplint"
-          # derive the OS and architecture from the build matrix name
-          # note: when split by a hyphen, first part is the OS and the second is the architecture
-          node_os=$(echo "${{ matrix.build.NAME }}" | cut -d '-' -f1)
-          export node_os
-          node_arch=$(echo "${{ matrix.build.NAME }}" | cut -d '-' -f2)
-          export node_arch
-          # set the version
-          export npm_package_version="${{ steps.version.outputs.new-version }}"
-          # set the package name
-          # note: use 'windows' as OS name instead of 'win32'
-          if [ "${{ matrix.build.OS }}" = "windows-2022" ]; then
-            export npm_package_name="${scope}/ts_deplint-windows-${node_arch}"
-          else
-            export npm_package_name="${scope}/ts_deplint-${node_os}-${node_arch}"
-          fi
-          # set the binary name
-          bin="ts_deplint"
-          # create the package directory
-          mkdir -p "${npm_package_name}/bin"
-          # generate package.json from the template
-          envsubst < package.json.tmpl > "${npm_package_name}/package.json"
-          echo "npm_package_name"
-          echo "$npm_package_name"
-          echo "npm_package_version"
-          echo "$npm_package_version"
-          # copy the binary into the package
-          cp "../target/${{ matrix.build.TARGET }}/release/${bin}" "${npm_package_name}/bin"
-          # publish the package
-          cd "${npm_package_name}"
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #     - name: Publish to NPM
+  #       shell: bash
+  #       run: |
+  #         cd npm
+  #         scope="@ts_deplint"
+  #         # derive the OS and architecture from the build matrix name
+  #         # note: when split by a hyphen, first part is the OS and the second is the architecture
+  #         node_os=$(echo "${{ matrix.build.NAME }}" | cut -d '-' -f1)
+  #         export node_os
+  #         node_arch=$(echo "${{ matrix.build.NAME }}" | cut -d '-' -f2)
+  #         export node_arch
+  #         # set the version
+  #         export npm_package_version="${{ steps.version.outputs.new-version }}"
+  #         # set the package name
+  #         # note: use 'windows' as OS name instead of 'win32'
+  #         if [ "${{ matrix.build.OS }}" = "windows-2022" ]; then
+  #           export npm_package_name="${scope}/ts_deplint-windows-${node_arch}"
+  #         else
+  #           export npm_package_name="${scope}/ts_deplint-${node_os}-${node_arch}"
+  #         fi
+  #         # set the binary name
+  #         bin="ts_deplint"
+  #         # create the package directory
+  #         mkdir -p "${npm_package_name}/bin"
+  #         # generate package.json from the template
+  #         envsubst < package.json.tmpl > "${npm_package_name}/package.json"
+  #         echo "npm_package_name"
+  #         echo "$npm_package_name"
+  #         echo "npm_package_version"
+  #         echo "$npm_package_version"
+  #         # copy the binary into the package
+  #         cp "../target/${{ matrix.build.TARGET }}/release/${bin}" "${npm_package_name}/bin"
+  #         # publish the package
+  #         cd "${npm_package_name}"
+  #         npm publish --access public
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-npm-base:
     name: Publish the base NPM package
-    needs: publish-npm-binaries
+    # needs: publish-npm-binaries
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
