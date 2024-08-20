@@ -1,6 +1,6 @@
 [package]
 name = "ts_deplint"
-version = "0.0.11"
+version = "0.0.12"
 edition = "2021"
 repository = "https://github.com/maxh/ts_deplint"
 description = "A tool to lint dependencies within TypeScript projects"
