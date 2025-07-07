@@ -118,10 +118,10 @@ fn normalize_import(import: &str, root: &Path, current: &Path) -> String {
         let full_path = current.join(Path::new(&import));
         let file_name = full_path.file_name().expect("Unable to get file name");
         let directory_path = full_path.parent().expect("Unable to get parent for path");
-        let normalized_path_directory =
+        let canonicalized_path_directory =
             canonicalize(directory_path).expect("Unable to canonicalize path");
-        let normalized_path = normalized_path_directory.join(file_name);
-        return normalized_path
+        let canonicalized_path = canonicalized_path_directory.join(file_name);
+        return canonicalized_path
             .strip_prefix(root)
             .expect("Failed to strip prefix")
             .to_str()
