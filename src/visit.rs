@@ -2,7 +2,7 @@ use crate::{
     disallowed, files, rules, ts_reader,
     violations::{DisallowedImportViolation, Violation},
 };
-use std::{error::Error, path::Path};
+use std::{error::Error, path::Component, path::Path, path::PathBuf};
 
 pub fn visit_path(
     violations: &mut Vec<Violation>,
@@ -49,12 +49,27 @@ fn check_files_for_disallowed_imports(
         if !file.ends_with(".ts") {
             continue;
         }
+
         let full_path = current.join(file);
         let relative_path = full_path.strip_prefix(root)?;
+
         let imports = ts_reader::read_ts_imports(&full_path)?;
         for import in imports {
+            let normalized_import: String;
+            if import.starts_with(".") {
+                let full_path = current.join(Path::new(&import));
+                let normalized_path = normalize_path(&full_path);
+                normalized_import = normalized_path
+                    .strip_prefix(root)?
+                    .to_str()
+                    .expect("Failed to convert path to string")
+                    .to_string();
+            } else {
+                normalized_import = import.clone();
+            }
+
             for disallowed_import in disallowed_imports {
-                if import.starts_with(disallowed_import) {
+                if normalized_import.starts_with(disallowed_import) {
                     let violation = DisallowedImportViolation {
                         file_path: relative_path.to_str().expect("").to_string(),
                         disallowed_import: disallowed_import.clone(),
@@ -108,4 +123,32 @@ fn visit_directories(
     }
 
     Ok(())
+}
+
+// Copied from https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
+pub fn normalize_path(path: &Path) -> PathBuf {
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                ret.pop();
+            }
+            Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    ret
 }
