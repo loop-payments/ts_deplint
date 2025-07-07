@@ -139,6 +139,8 @@ fn canonicalize_import_path(
         fully_qualified_path = root_directory.join(import_path);
     }
 
+    // We expect there to always be a parent directory since we
+    // append the import path to a directory.
     let directory_path = fully_qualified_path
         .parent()
         .expect("Unable to get parent directory");
