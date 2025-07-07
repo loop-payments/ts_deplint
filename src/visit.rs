@@ -59,7 +59,7 @@ fn check_files_for_disallowed_imports(
 
         let imports = ts_reader::read_ts_imports(&full_path)?;
         for import in imports {
-            let normalized_import = normalize_import(&import, root, current)?;
+            let normalized_import = normalize_relative_import(&import, root, current)?;
             for disallowed_import in disallowed_imports {
                 if normalized_import.starts_with(disallowed_import) {
                     let violation = DisallowedImportViolation {
@@ -117,28 +117,24 @@ fn visit_directories(
     Ok(())
 }
 
-fn normalize_import(
+fn normalize_relative_import(
     import: &str,
-    root: &Path,
-    current: &Path,
-) -> Result<PathBuf, StripPrefixError> {
-    let full_path = current.join(Path::new(&import));
-
-    let file_name = full_path.file_name().unwrap_or_default();
-    let directory_path = full_path
+    root_directory: &Path,
+    current_directory: &Path,
+) -> Result<PathBuf, Box<dyn Error>> {
+    if !import.starts_with(".") {
+        // Non relative imports are returned as is
+        return Ok(PathBuf::from(import));
+    }
+    let import_path = Path::new(&import);
+    let file_name = import_path.file_name().unwrap_or_default();
+    let fully_qualified_path = current_directory.join(import_path);
+    let directory_path = fully_qualified_path
         .parent()
         .expect("Expected a parent directory to exist");
-
-    match canonicalize(directory_path) {
-        Ok(canonicalized_directory_path) => {
-            let canonicalized_path = canonicalized_directory_path.join(file_name);
-            let path_buf = canonicalized_path.strip_prefix(root)?.to_path_buf();
-            return Ok(path_buf);
-        }
-        Err(_) => {
-            // If we fail to canonicalize the directory path, we assume the
-            // import is an external package import and return it as is.
-            return Ok(PathBuf::from(import));
-        }
-    }
+    let canonicalized_directory_path = canonicalize(directory_path)?;
+    Ok(canonicalized_directory_path
+        .join(file_name)
+        .strip_prefix(root_directory)?
+        .to_path_buf())
 }
