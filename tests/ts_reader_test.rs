@@ -24,6 +24,6 @@ mod tests {
         assert!(result.is_ok());
 
         let ts_imports = result.unwrap();
-        assert_eq!(ts_imports, vec!["foo", "baz/baz/baz"]);
+        assert_eq!(ts_imports, vec!["foo", "baz/baz/baz", "./baz/baz"]);
     }
 }
