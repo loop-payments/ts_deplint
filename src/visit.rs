@@ -2,7 +2,11 @@ use crate::{
     disallowed, files, rules, ts_reader,
     violations::{DisallowedImportViolation, Violation},
 };
-use std::{error::Error, fs::canonicalize, path::Path};
+use std::{
+    error::Error,
+    fs::canonicalize,
+    path::{Path, PathBuf},
+};
 
 pub fn visit_path(
     violations: &mut Vec<Violation>,
@@ -113,21 +117,22 @@ fn visit_directories(
     Ok(())
 }
 
-fn normalize_import(import: &str, root: &Path, current: &Path) -> String {
+fn normalize_import(import: &str, root: &Path, current: &Path) -> PathBuf {
     if import.starts_with(".") {
         let full_path = current.join(Path::new(&import));
+
         let file_name = full_path.file_name().expect("Unable to get file name");
         let directory_path = full_path.parent().expect("Unable to get parent for path");
+
         let canonicalized_path_directory =
             canonicalize(directory_path).expect("Unable to canonicalize path");
         let canonicalized_path = canonicalized_path_directory.join(file_name);
+
         return canonicalized_path
             .strip_prefix(root)
             .expect("Failed to strip prefix")
-            .to_str()
-            .expect("Failed to convert path to string")
-            .to_string();
+            .to_path_buf();
     }
 
-    return import.to_string();
+    return PathBuf::from(import);
 }
