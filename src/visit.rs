@@ -5,7 +5,7 @@ use crate::{
 use std::{
     error::Error,
     fs::canonicalize,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf, StripPrefixError},
 };
 
 pub fn visit_path(
@@ -59,7 +59,7 @@ fn check_files_for_disallowed_imports(
 
         let imports = ts_reader::read_ts_imports(&full_path)?;
         for import in imports {
-            let normalized_import = normalize_import(&import, root, current);
+            let normalized_import = normalize_import(&import, root, current)?;
             for disallowed_import in disallowed_imports {
                 if normalized_import.starts_with(disallowed_import) {
                     let violation = DisallowedImportViolation {
@@ -117,22 +117,28 @@ fn visit_directories(
     Ok(())
 }
 
-fn normalize_import(import: &str, root: &Path, current: &Path) -> PathBuf {
-    if import.starts_with(".") {
-        let full_path = current.join(Path::new(&import));
+fn normalize_import(
+    import: &str,
+    root: &Path,
+    current: &Path,
+) -> Result<PathBuf, StripPrefixError> {
+    let full_path = current.join(Path::new(&import));
 
-        let file_name = full_path.file_name().expect("Unable to get file name");
-        let directory_path = full_path.parent().expect("Unable to get parent for path");
+    let file_name = full_path.file_name().unwrap_or_default();
+    let directory_path = full_path
+        .parent()
+        .expect("Expected a parent directory to exist");
 
-        let canonicalized_path_directory =
-            canonicalize(directory_path).expect("Unable to canonicalize path");
-        let canonicalized_path = canonicalized_path_directory.join(file_name);
-
-        return canonicalized_path
-            .strip_prefix(root)
-            .expect("Failed to strip prefix")
-            .to_path_buf();
+    match canonicalize(directory_path) {
+        Ok(canonicalized_directory_path) => {
+            let canonicalized_path = canonicalized_directory_path.join(file_name);
+            let path_buf = canonicalized_path.strip_prefix(root)?.to_path_buf();
+            return Ok(path_buf);
+        }
+        Err(_) => {
+            // If we fail to canonicalize the directory path, we assume the
+            // import is an external package import and return it as is.
+            return Ok(PathBuf::from(import));
+        }
     }
-
-    return PathBuf::from(import);
 }
