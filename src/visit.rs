@@ -5,7 +5,7 @@ use crate::{
 use std::{
     error::Error,
     fs::canonicalize,
-    path::{Path, PathBuf, StripPrefixError},
+    path::{Path, PathBuf},
 };
 
 pub fn visit_path(
