@@ -122,7 +122,7 @@ fn canonicalize_import_path(
     root_directory: &Path,
     current_directory: &Path,
 ) -> Result<PathBuf, Box<dyn Error>> {
-    if import.is_empty() {
+    if import.trim().is_empty() {
         // Edge case handling.
         return Ok(PathBuf::from(import));
     }
