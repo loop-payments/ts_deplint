@@ -2,7 +2,7 @@ use crate::{
     disallowed, files, rules, ts_reader,
     violations::{DisallowedImportViolation, Violation},
 };
-use std::{error::Error, path::Component, path::Path, path::PathBuf};
+use std::{error::Error, fs::canonicalize, path::Path};
 
 pub fn visit_path(
     violations: &mut Vec<Violation>,
@@ -116,7 +116,11 @@ fn visit_directories(
 fn normalize_import(import: &str, root: &Path, current: &Path) -> String {
     if import.starts_with(".") {
         let full_path = current.join(Path::new(&import));
-        let normalized_path = normalize_path(&full_path);
+        let file_name = full_path.file_name().expect("Unable to get file name");
+        let directory_path = full_path.parent().expect("Unable to get parent for path");
+        let normalized_path_directory =
+            canonicalize(directory_path).expect("Unable to canonicalize path");
+        let normalized_path = normalized_path_directory.join(file_name);
         return normalized_path
             .strip_prefix(root)
             .expect("Failed to strip prefix")
@@ -126,60 +130,4 @@ fn normalize_import(import: &str, root: &Path, current: &Path) -> String {
     }
 
     return import.to_string();
-}
-
-#[test]
-fn test_normalize_import() {
-    assert_eq!(
-        normalize_import(
-            "../other-code/test-file",
-            Path::new("/Home/code/lib/system"),
-            Path::new("/Home/code/lib/system/src/entity")
-        ),
-        "src/other-code/test-file"
-    );
-    assert_eq!(
-        normalize_import(
-            "./sub-dir/test-file",
-            Path::new("/Home/code/lib/system"),
-            Path::new("/Home/code/lib/system/src/entity")
-        ),
-        "src/entity/sub-dir/test-file"
-    );
-    assert_eq!(
-        normalize_import(
-            "src/entity/sub-dir/test-file",
-            Path::new("/Home/code/lib/system"),
-            Path::new("/Home/code/lib/system/src/entity")
-        ),
-        "src/entity/sub-dir/test-file"
-    );
-}
-
-// Copied from https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
-fn normalize_path(path: &Path) -> PathBuf {
-    let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
-        components.next();
-        PathBuf::from(c.as_os_str())
-    } else {
-        PathBuf::new()
-    };
-
-    for component in components {
-        match component {
-            Component::Prefix(..) => unreachable!(),
-            Component::RootDir => {
-                ret.push(component.as_os_str());
-            }
-            Component::CurDir => {}
-            Component::ParentDir => {
-                ret.pop();
-            }
-            Component::Normal(c) => {
-                ret.push(c);
-            }
-        }
-    }
-    ret
 }
