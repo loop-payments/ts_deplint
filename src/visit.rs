@@ -122,11 +122,16 @@ fn canonicalize_import_path(
     root_directory: &Path,
     current_directory: &Path,
 ) -> Result<PathBuf, Box<dyn Error>> {
+    if import.is_empty() {
+        // Edge case handling.
+        return Ok(PathBuf::from(import));
+    }
+
     let import_path = Path::new(&import);
     let file_name = import_path.file_name().unwrap_or_default();
 
     let fully_qualified_path: PathBuf;
-    if import_path.starts_with(".") {
+    if import.starts_with(".") {
         // Relative imports are relative to the current directory of the file.
         fully_qualified_path = current_directory.join(import_path);
     } else {
