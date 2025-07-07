@@ -146,6 +146,14 @@ fn test_normalize_import() {
         ),
         "src/entity/sub-dir/test-file"
     );
+    assert_eq!(
+        normalize_import(
+            "src/entity/sub-dir/test-file",
+            Path::new("/Home/code/lib/system"),
+            Path::new("/Home/code/lib/system/src/entity")
+        ),
+        "src/entity/sub-dir/test-file"
+    );
 }
 
 // Copied from https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
