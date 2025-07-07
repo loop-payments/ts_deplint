@@ -133,8 +133,10 @@ fn normalize_relative_import(
         .parent()
         .expect("Expected a parent directory to exist");
     let canonicalized_directory_path = canonicalize(directory_path)?;
-    Ok(canonicalized_directory_path
+    let normalized_import = canonicalized_directory_path
         .join(file_name)
         .strip_prefix(root_directory)?
-        .to_path_buf())
+        .to_path_buf();
+
+    Ok(normalized_import)
 }
