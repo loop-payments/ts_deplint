@@ -55,19 +55,7 @@ fn check_files_for_disallowed_imports(
 
         let imports = ts_reader::read_ts_imports(&full_path)?;
         for import in imports {
-            let normalized_import: String;
-            if import.starts_with(".") {
-                let full_path = current.join(Path::new(&import));
-                let normalized_path = normalize_path(&full_path);
-                normalized_import = normalized_path
-                    .strip_prefix(root)?
-                    .to_str()
-                    .expect("Failed to convert path to string")
-                    .to_string();
-            } else {
-                normalized_import = import.clone();
-            }
-
+            let normalized_import = normalize_import(&import, root, current);
             for disallowed_import in disallowed_imports {
                 if normalized_import.starts_with(disallowed_import) {
                     let violation = DisallowedImportViolation {
@@ -125,8 +113,43 @@ fn visit_directories(
     Ok(())
 }
 
+fn normalize_import(import: &str, root: &Path, current: &Path) -> String {
+    if import.starts_with(".") {
+        let full_path = current.join(Path::new(&import));
+        let normalized_path = normalize_path(&full_path);
+        return normalized_path
+            .strip_prefix(root)
+            .expect("Failed to strip prefix")
+            .to_str()
+            .expect("Failed to convert path to string")
+            .to_string();
+    }
+
+    return import.to_string();
+}
+
+#[test]
+fn test_normalize_import() {
+    assert_eq!(
+        normalize_import(
+            "../other-code/test-file",
+            Path::new("/Home/code/lib/system"),
+            Path::new("/Home/code/lib/system/src/entity")
+        ),
+        "src/other-code/test-file"
+    );
+    assert_eq!(
+        normalize_import(
+            "./sub-dir/test-file",
+            Path::new("/Home/code/lib/system"),
+            Path::new("/Home/code/lib/system/src/entity")
+        ),
+        "src/entity/sub-dir/test-file"
+    );
+}
+
 // Copied from https://github.com/rust-lang/cargo/blob/fede83ccf973457de319ba6fa0e36ead454d2e20/src/cargo/util/paths.rs#L61
-pub fn normalize_path(path: &Path) -> PathBuf {
+fn normalize_path(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
