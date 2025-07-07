@@ -123,7 +123,9 @@ fn canonicalize_import_path(
     current_directory: &Path,
 ) -> Result<PathBuf, Box<dyn Error>> {
     if import.trim().is_empty() {
-        // Edge case handling.
+        // Edge case handling. An empty string would lead to us
+        // resolving the root directory, and stripping the
+        // root_directory prefix would fail.
         return Ok(PathBuf::from(import));
     }
 
