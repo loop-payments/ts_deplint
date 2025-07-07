@@ -59,9 +59,9 @@ fn check_files_for_disallowed_imports(
 
         let imports = ts_reader::read_ts_imports(&full_path)?;
         for import in imports {
-            let normalized_import = normalize_relative_import(&import, root, current)?;
+            let canonicalized_import_path = canonicalize_import_path(&import, root, current)?;
             for disallowed_import in disallowed_imports {
-                if normalized_import.starts_with(disallowed_import) {
+                if canonicalized_import_path.starts_with(disallowed_import) {
                     let violation = DisallowedImportViolation {
                         file_path: relative_path.to_str().expect("").to_string(),
                         disallowed_import: disallowed_import.clone(),
@@ -117,7 +117,7 @@ fn visit_directories(
     Ok(())
 }
 
-fn normalize_relative_import(
+fn canonicalize_import_path(
     import: &str,
     root_directory: &Path,
     current_directory: &Path,
@@ -144,10 +144,10 @@ fn normalize_relative_import(
         return Ok(import_path.to_path_buf());
     };
 
-    let normalized_import = canonicalized_directory_path
+    let path_from_root = canonicalized_directory_path
         .join(file_name)
         .strip_prefix(root_directory)?
         .to_path_buf();
 
-    Ok(normalized_import)
+    Ok(path_from_root)
 }
