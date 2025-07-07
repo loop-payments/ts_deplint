@@ -122,17 +122,28 @@ fn normalize_relative_import(
     root_directory: &Path,
     current_directory: &Path,
 ) -> Result<PathBuf, Box<dyn Error>> {
-    if !import.starts_with(".") {
-        // Non relative imports are returned as is
-        return Ok(PathBuf::from(import));
-    }
     let import_path = Path::new(&import);
     let file_name = import_path.file_name().unwrap_or_default();
-    let fully_qualified_path = current_directory.join(import_path);
+
+    let fully_qualified_path: PathBuf;
+    if import_path.starts_with(".") {
+        // Relative imports are relative to the current directory of the file.
+        fully_qualified_path = current_directory.join(import_path);
+    } else {
+        // Absolute imports are relative to the root directory of the project.
+        fully_qualified_path = root_directory.join(import_path);
+    }
+
     let directory_path = fully_qualified_path
         .parent()
-        .expect("Expected a parent directory to exist");
-    let canonicalized_directory_path = canonicalize(directory_path)?;
+        .expect("Unable to get parent directory");
+
+    let Ok(canonicalized_directory_path) = canonicalize(directory_path) else {
+        // If the path doesn't exist, we assume it's an import from a third-party library
+        // and return the original import path as is.
+        return Ok(import_path.to_path_buf());
+    };
+
     let normalized_import = canonicalized_directory_path
         .join(file_name)
         .strip_prefix(root_directory)?
