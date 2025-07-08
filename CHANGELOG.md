@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.0.12
+## v0.0.13
 
 - Add support for highlighting transitive dependencies in red.
 
