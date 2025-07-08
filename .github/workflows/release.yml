@@ -14,33 +14,32 @@ jobs:
       fail-fast: false
       matrix:
         build:
-          - {
-              NAME: linux-x64-glibc,
-              OS: ubuntu-20.04,
-              TOOLCHAIN: stable,
-              TARGET: x86_64-unknown-linux-gnu,
-            }
-          - {
-              NAME: linux-arm64-glibc,
-              OS: ubuntu-20.04,
-              TOOLCHAIN: stable,
-              TARGET: aarch64-unknown-linux-gnu,
-            }
-          - {
-              NAME: darwin-x64,
-              OS: macos-12,
-              TOOLCHAIN: stable,
-              TARGET: x86_64-apple-darwin,
-            }
-          - {
-              NAME: darwin-arm64,
-              OS: macos-12,
-              TOOLCHAIN: stable,
-              TARGET: aarch64-apple-darwin,
-            }
+          - NAME: linux-x64-glibc
+            OS: ubuntu-24.04
+            TOOLCHAIN: stable
+            USE_CROSS: false
+            TARGET: x86_64-unknown-linux-gnu
+
+          - NAME: linux-arm64-glibc
+            OS: ubuntu-24.04
+            TOOLCHAIN: stable
+            USE_CROSS: true
+            TARGET: aarch64-unknown-linux-gnu
+
+          - NAME: darwin-x64
+            OS: macos-13
+            TOOLCHAIN: stable
+            USE_CROSS: false
+            TARGET: x86_64-apple-darwin
+
+          - NAME: darwin-arm64
+            OS: macos-13
+            TOOLCHAIN: stable
+            USE_CROSS: false
+            TARGET: aarch64-apple-darwin
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Determine new package version
         id: version
@@ -49,24 +48,28 @@ jobs:
           curr="$(grep -oE 'version\s*=\s*"[^"]+"' Cargo.toml | cut -d '"' -f 2 | head -n 1)"
           echo "new-version=$curr" >> "$GITHUB_OUTPUT"
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.build.TOOLCHAIN }}
-          target: ${{ matrix.build.TARGET }}
-          override: true
+      - name: Set the toolchain
+        run: rustup override set ${{ matrix.build.TOOLCHAIN }}
+
+      - name: Add the target
+        run: rustup target add ${{ matrix.build.TARGET }} --toolchain ${{ matrix.build.TOOLCHAIN }}
+
+      - name: Install cross if necessary
+        if: matrix.build.USE_CROSS == true
+        run: cargo install cross
 
       - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --locked --target ${{ matrix.build.TARGET }}
-          use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
+        run: |
+          if [ "${{ matrix.build.USE_CROSS }}" = "true" ]; then
+            cross build --release --locked --target ${{ matrix.build.TARGET }}
+          else
+            cargo build --release --locked --target ${{ matrix.build.TARGET }}
+          fi
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "16"
+          node-version: "18"
           registry-url: "https://registry.npmjs.org"
 
       - name: Publish to NPM
@@ -113,12 +116,12 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "16"
+          node-version: "18"
           registry-url: "https://registry.npmjs.org"
 
       - name: Publish the package
