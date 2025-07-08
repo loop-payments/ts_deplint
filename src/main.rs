@@ -72,16 +72,17 @@ fn main() -> Result<(), Box<dyn Error>> {
 }
 
 fn run_lint_command(command: LintCommand) -> Result<(), Box<dyn Error>> {
-    let sample_path = fs::canonicalize(Path::new(&command.paths[0]))?;
+    let Ok(sample_path) = fs::canonicalize(Path::new(&command.paths[0])) else {
+        return Err(format!("Target path '{}' does not exist.", &command.paths[0]).into());
+    };
     let root = find_package_json_directory(&sample_path)
         .ok_or("No package.json found in any parent directory.")?;
 
     let mut all_violations: HashSet<Violation> = HashSet::new();
     for path in command.paths.iter() {
-        let target = fs::canonicalize(Path::new(path))?;
-        if !target.exists() {
+        let Ok(target) = fs::canonicalize(Path::new(path)) else {
             return Err(format!("Target path '{}' does not exist.", path).into());
-        }
+        };
         let violations = list_violations(&root, &target, false)?;
         all_violations.extend(violations);
     }
@@ -97,7 +98,9 @@ fn run_lint_command(command: LintCommand) -> Result<(), Box<dyn Error>> {
 
 fn run_diagram_command(command: DiagramCommand) -> Result<(), Box<dyn Error>> {
     for path in command.paths.iter() {
-        let target = fs::canonicalize(Path::new(path))?;
+        let Ok(target) = fs::canonicalize(Path::new(path)) else {
+            return Err(format!("Target path '{}' does not exist.", path).into());
+        };
         if target.ends_with(RULES_FILE_NAME) {
             let readme_path = target.parent().unwrap().join("README.md");
             update_readme_with_diagram(&target, &readme_path, command.show_circular_dependencies)?;
@@ -112,18 +115,18 @@ fn run_diagram_command(command: DiagramCommand) -> Result<(), Box<dyn Error>> {
 }
 
 fn run_fix_command(command: FixCommand) -> Result<(), Box<dyn Error>> {
-    let sample_path = fs::canonicalize(Path::new(&command.paths[0]))?;
+    let Ok(sample_path) = fs::canonicalize(Path::new(&command.paths[0])) else {
+        return Err(format!("Target path '{}' does not exist.", &command.paths[0]).into());
+    };
     let root = find_package_json_directory(&sample_path)
         .ok_or("No package.json found in any parent directory.")?;
 
     let mut i = 0;
     for path in command.paths.iter() {
         loop {
-            let target = fs::canonicalize(Path::new(path))?;
-            if !target.exists() {
-                eprintln!("Target path '{}' does not exist.", path);
-                std::process::exit(1);
-            }
+            let Ok(target) = fs::canonicalize(Path::new(path)) else {
+                return Err(format!("Target path '{}' does not exist.", path).into());
+            };
             let violations = list_violations(&root, &target, true)?;
             if violations.len() == 0 {
                 break;
@@ -150,10 +153,9 @@ fn run_fix_command(command: FixCommand) -> Result<(), Box<dyn Error>> {
 
 fn run_format_command(command: FormatCommand) -> Result<(), Box<dyn Error>> {
     for path in command.paths.iter() {
-        let target = fs::canonicalize(Path::new(path))?;
-        if !target.exists() {
+        let Ok(target) = fs::canonicalize(Path::new(path)) else {
             return Err(format!("Target path '{}' does not exist.", path).into());
-        }
+        };
         if target.ends_with(RULES_FILE_NAME) {
             ts_deplint::format_rules_file(&target)?;
         } else {
