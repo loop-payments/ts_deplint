@@ -1,6 +1,8 @@
+use regex::Regex;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::sync::LazyLock;
 
 const IGNORE_COMMENT: &str = "// ts_deplint ignore";
 
@@ -28,14 +30,41 @@ pub fn read_ts_imports(ts_path: &Path) -> io::Result<Vec<String>> {
     Ok(ts_imports)
 }
 
+static IMPORT_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"(?:from|import)+\s+["']([^"']+)["'];"#).unwrap());
+
 fn extract_import(line: &str) -> Option<String> {
-    if let Some(start) = line.find("from ") {
-        let end = line[start + 6..]
-            .find(";")
-            .map(|i| start + 6 + i - 1)
-            .unwrap_or(line.len());
-        let path = &line[start + 6..end];
-        return Some(path.to_string());
+    let captures = IMPORT_REGEX.captures(line)?;
+    let group_1 = captures.get(1)?;
+    Some(group_1.as_str().to_string())
+}
+
+#[test]
+fn test_extract_import_paths() {
+    let cases = [
+        ("import x from 'foo';", Some("foo")),
+        ("import { y } from './bar';", Some("./bar")),
+        ("import * as z from 'baz';", Some("baz")),
+        ("import 'side-effect';", Some("side-effect")),
+        (
+            "import {\n    a,\n    b,\n    c,\n} from 'multi-line/import';",
+            Some("multi-line/import"),
+        ),
+        (
+            "import a from '@package/with-symbol';",
+            Some("@package/with-symbol"),
+        ),
+        (
+            "import a from \"@double-quote/import\";",
+            Some("@double-quote/import"),
+        ),
+        ("function test() {", None),
+    ];
+    for (input, expected) in cases {
+        assert_eq!(
+            extract_import(input),
+            expected.map(String::from),
+            "Failed on input: {input}"
+        );
     }
-    None
 }
