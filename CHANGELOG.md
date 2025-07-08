@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.0.15
+
+- Fix bug introduced v0.0.14 which led to incorrect resolution of CLI input of relative paths.
+
 ## v0.0.14
 
 - Update build dependencies.
