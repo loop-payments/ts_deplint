@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.0.13
+
+- Support relative import paths.
+- Use regex for finding imports.
+- Upgrade dependencies.
+
 ## v0.0.12
 
 - Add support for highlighting transitive dependencies in red.
