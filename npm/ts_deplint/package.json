@@ -1,6 +1,6 @@
 {
   "name": "@ts_deplint/ts_deplint",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "bin": "dist/index.js",
   "files": [
     "dist/**/*",
@@ -24,10 +24,10 @@
     "typescript": "^5.4.3"
   },
   "optionalDependencies": {
-    "@ts_deplint/ts_deplint-darwin-arm64": "0.0.13",
-    "@ts_deplint/ts_deplint-darwin-x64": "0.0.13",
-    "@ts_deplint/ts_deplint-linux-arm64": "0.0.13",
-    "@ts_deplint/ts_deplint-linux-x64": "0.0.13"
+    "@ts_deplint/ts_deplint-darwin-arm64": "0.0.14",
+    "@ts_deplint/ts_deplint-darwin-x64": "0.0.14",
+    "@ts_deplint/ts_deplint-linux-arm64": "0.0.14",
+    "@ts_deplint/ts_deplint-linux-x64": "0.0.14"
   },
   "eslintConfig": {
     "extends": [
