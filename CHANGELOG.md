@@ -4,6 +4,7 @@
 
 - Support relative import paths.
 - Use regex for finding imports.
+- Upgrade dependencies.
 
 ## v0.0.12
 
