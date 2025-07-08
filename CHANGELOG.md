@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.0.14
+
+- Update build dependencies.
+
 ## v0.0.13
 
 - Support relative import paths.
