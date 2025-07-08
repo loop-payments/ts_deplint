@@ -2,7 +2,11 @@ use crate::{
     disallowed, files, rules, ts_reader,
     violations::{DisallowedImportViolation, Violation},
 };
-use std::{error::Error, path::Path};
+use std::{
+    error::Error,
+    fs::canonicalize,
+    path::{Path, PathBuf},
+};
 
 pub fn visit_path(
     violations: &mut Vec<Violation>,
@@ -49,12 +53,15 @@ fn check_files_for_disallowed_imports(
         if !file.ends_with(".ts") {
             continue;
         }
+
         let full_path = current.join(file);
         let relative_path = full_path.strip_prefix(root)?;
+
         let imports = ts_reader::read_ts_imports(&full_path)?;
         for import in imports {
+            let canonicalized_import_path = canonicalize_import_path(&import, root, current)?;
             for disallowed_import in disallowed_imports {
-                if import.starts_with(disallowed_import) {
+                if canonicalized_import_path.starts_with(disallowed_import) {
                     let violation = DisallowedImportViolation {
                         file_path: relative_path.to_str().expect("").to_string(),
                         disallowed_import: disallowed_import.clone(),
@@ -108,4 +115,48 @@ fn visit_directories(
     }
 
     Ok(())
+}
+
+fn canonicalize_import_path(
+    import: &str,
+    root_directory: &Path,
+    current_directory: &Path,
+) -> Result<PathBuf, Box<dyn Error>> {
+    if import.trim().is_empty() {
+        // Edge case handling. An empty string would lead to us
+        // resolving the root directory, and stripping the
+        // root_directory prefix would fail.
+        return Ok(PathBuf::from(import));
+    }
+
+    let import_path = Path::new(&import);
+    let file_name = import_path.file_name().unwrap_or_default();
+
+    let fully_qualified_path: PathBuf;
+    if import.starts_with(".") {
+        // Relative imports are relative to the current directory of the file.
+        fully_qualified_path = current_directory.join(import_path);
+    } else {
+        // Absolute imports are relative to the root directory of the project.
+        fully_qualified_path = root_directory.join(import_path);
+    }
+
+    // We expect there to always be a parent directory since we
+    // append the import path to a directory.
+    let directory_path = fully_qualified_path
+        .parent()
+        .expect("Unable to get parent directory");
+
+    let Ok(canonicalized_directory_path) = canonicalize(directory_path) else {
+        // If the path doesn't exist, we assume it's an import from a third-party library
+        // and return the original import path as is.
+        return Ok(import_path.to_path_buf());
+    };
+
+    let path_from_root = canonicalized_directory_path
+        .join(file_name)
+        .strip_prefix(root_directory)?
+        .to_path_buf();
+
+    Ok(path_from_root)
 }
