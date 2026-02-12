@@ -56,7 +56,7 @@ impl Rules {
 fn find_difference<'a>(a: &[&'a str], b: &[&'a str]) -> Vec<&'a str> {
     a.iter()
         .filter(|x| !b.contains(x))
-        .map(|s| *s)
+        .copied()
         .collect::<Vec<&str>>()
 }
 
