@@ -56,13 +56,8 @@ fn get_initial_disallowed_imports_impl(
         .and_then(|component| component.as_os_str().to_str().map(String::from))
         .expect("Failed to read next directory name.");
     let (rules, _) = &rules::get_dir_rules_if_exists(root, current);
-    let child_disallowed_imports = get_child_disallowed_imports(
-        root,
-        current,
-        &disallowed_imports,
-        rules,
-        &next_dir_name,
-    );
+    let child_disallowed_imports =
+        get_child_disallowed_imports(root, current, &disallowed_imports, rules, &next_dir_name);
     return get_initial_disallowed_imports_impl(
         root,
         target,
