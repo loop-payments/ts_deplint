@@ -11,7 +11,7 @@ use std::{
 pub fn visit_path(
     violations: &mut Vec<Violation>,
     root: &Path,
-    disallowed_imports: &Vec<String>,
+    disallowed_imports: &[String],
     current: &Path,
     abort_on_violation: bool,
 ) -> Result<(), Box<dyn Error>> {
@@ -44,9 +44,9 @@ pub fn visit_path(
 fn check_files_for_disallowed_imports(
     violations: &mut Vec<Violation>,
     root: &Path,
-    disallowed_imports: &Vec<String>,
+    disallowed_imports: &[String],
     current: &Path,
-    files: &Vec<String>,
+    files: &[String],
     abort_on_violation: bool,
 ) -> Result<(), Box<dyn Error>> {
     for file in files {
@@ -82,9 +82,9 @@ fn check_files_for_disallowed_imports(
 fn visit_directories(
     violations: &mut Vec<Violation>,
     root: &Path,
-    disallowed_imports: &Vec<String>,
+    disallowed_imports: &[String],
     current: &Path,
-    directories: &Vec<String>,
+    directories: &[String],
     abort_on_violation: bool,
 ) -> Result<(), Box<dyn Error>> {
     let (current_rules, rules_file_violations) = rules::get_dir_rules_if_exists(root, current);
