@@ -87,7 +87,7 @@ fn run_lint_command(command: LintCommand) -> Result<(), Box<dyn Error>> {
         all_violations.extend(violations);
     }
 
-    if all_violations.len() > 0 {
+    if !all_violations.is_empty() {
         let count = all_violations.len();
         pretty_print_violations(all_violations);
         return Err(format!("{} violations.", count).into());
@@ -128,7 +128,7 @@ fn run_fix_command(command: FixCommand) -> Result<(), Box<dyn Error>> {
                 return Err(format!("Target path '{}' does not exist.", path).into());
             };
             let violations = list_violations(&root, &target, true)?;
-            if violations.len() == 0 {
+            if violations.is_empty() {
                 break;
             }
             for violation in violations {

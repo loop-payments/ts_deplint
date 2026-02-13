@@ -11,7 +11,7 @@ use std::{
 pub fn visit_path(
     violations: &mut Vec<Violation>,
     root: &Path,
-    disallowed_imports: &Vec<String>,
+    disallowed_imports: &[String],
     current: &Path,
     abort_on_violation: bool,
 ) -> Result<(), Box<dyn Error>> {
@@ -21,11 +21,11 @@ pub fn visit_path(
         violations,
         root,
         disallowed_imports,
-        &current,
+        current,
         &files_and_directories.files,
         abort_on_violation,
     )?;
-    if abort_on_violation && violations.len() > 0 {
+    if abort_on_violation && !violations.is_empty() {
         return Ok(());
     }
 
@@ -33,7 +33,7 @@ pub fn visit_path(
         violations,
         root,
         disallowed_imports,
-        &current,
+        current,
         &files_and_directories.directories,
         abort_on_violation,
     )?;
@@ -44,9 +44,9 @@ pub fn visit_path(
 fn check_files_for_disallowed_imports(
     violations: &mut Vec<Violation>,
     root: &Path,
-    disallowed_imports: &Vec<String>,
+    disallowed_imports: &[String],
     current: &Path,
-    files: &Vec<String>,
+    files: &[String],
     abort_on_violation: bool,
 ) -> Result<(), Box<dyn Error>> {
     for file in files {
@@ -82,16 +82,16 @@ fn check_files_for_disallowed_imports(
 fn visit_directories(
     violations: &mut Vec<Violation>,
     root: &Path,
-    disallowed_imports: &Vec<String>,
+    disallowed_imports: &[String],
     current: &Path,
-    directories: &Vec<String>,
+    directories: &[String],
     abort_on_violation: bool,
 ) -> Result<(), Box<dyn Error>> {
     let (current_rules, rules_file_violations) = rules::get_dir_rules_if_exists(root, current);
     violations.extend(
         rules_file_violations
             .into_iter()
-            .map(|issue| Violation::ReferenceToNonexistentDirectory(issue)),
+            .map(Violation::ReferenceToNonexistentDirectory),
     );
     for child in directories {
         let dir_disallowed_imports = disallowed::get_child_disallowed_imports(
@@ -109,7 +109,7 @@ fn visit_directories(
             &next,
             abort_on_violation,
         )?;
-        if abort_on_violation && violations.len() > 0 {
+        if abort_on_violation && !violations.is_empty() {
             return Ok(());
         }
     }
@@ -132,14 +132,13 @@ fn canonicalize_import_path(
     let import_path = Path::new(&import);
     let file_name = import_path.file_name().unwrap_or_default();
 
-    let fully_qualified_path: PathBuf;
-    if import.starts_with(".") {
+    let fully_qualified_path: PathBuf = if import.starts_with(".") {
         // Relative imports are relative to the current directory of the file.
-        fully_qualified_path = current_directory.join(import_path);
+        current_directory.join(import_path)
     } else {
         // Absolute imports are relative to the root directory of the project.
-        fully_qualified_path = root_directory.join(import_path);
-    }
+        root_directory.join(import_path)
+    };
 
     // We expect there to always be a parent directory since we
     // append the import path to a directory.

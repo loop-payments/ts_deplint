@@ -42,7 +42,7 @@ fn get_allows(yaml_path: &Path) -> Result<AllowsMap<String>, Box<dyn Error>> {
     let converted_rules = yaml_rules
         .allow
         .into_iter()
-        .map(|(source, targets)| (source, BTreeSet::from_iter(targets.into_iter())))
+        .map(|(source, targets)| (source, BTreeSet::from_iter(targets)))
         .collect::<AllowsMap<_>>();
     Ok(converted_rules)
 }
