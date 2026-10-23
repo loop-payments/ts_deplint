@@ -73,7 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn run_lint_command(command: LintCommand) -> Result<(), Box<dyn Error>> {
     let Ok(sample_path) = fs::canonicalize(Path::new(&command.paths[0])) else {
-        return Err(format!("Target path '{}' does not exist.", &command.paths[0]).into());
+        return Err(format!("Target path '{}' does not exist.", command.paths[0]).into());
     };
     let root = find_package_json_directory(&sample_path)
         .ok_or("No package.json found in any parent directory.")?;
@@ -116,7 +116,7 @@ fn run_diagram_command(command: DiagramCommand) -> Result<(), Box<dyn Error>> {
 
 fn run_fix_command(command: FixCommand) -> Result<(), Box<dyn Error>> {
     let Ok(sample_path) = fs::canonicalize(Path::new(&command.paths[0])) else {
-        return Err(format!("Target path '{}' does not exist.", &command.paths[0]).into());
+        return Err(format!("Target path '{}' does not exist.", command.paths[0]).into());
     };
     let root = find_package_json_directory(&sample_path)
         .ok_or("No package.json found in any parent directory.")?;
